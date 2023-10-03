@@ -1,0 +1,511 @@
+#include <Windows.h>
+#include <stdlib.h>
+#include <string.h>
+#include <tchar.h>
+#include <WinUser.h>
+#include <conio.h>
+#include <stdio.h>
+#include <commctrl.h>
+#include <wingdi.h>
+#include <string>
+
+#pragma comment(lib, "Comctl32.lib")
+
+#define FILE_MENU_NEW 1
+#define FILE_MENU_NEW_FILE 2
+#define FILE_MENU_NEW_PROJECT 3
+#define FILE_MENU_OPEN 4
+#define FILE_MENU_SAVE 5
+#define RESISTOR 6
+#define CAPACITOR 7
+#define INDUCTOR 8
+#define BATTERY 9
+#define T_LINE 10
+#define VK_ESCAPE 11
+#define COORDINATES 12
+#define w 10
+#define h 10
+
+int r=0;
+int c;
+int l;
+int tl;
+int b;
+
+HWND pixelconsole = GetConsoleWindow();
+HDC pixeldc = GetDC(pixelconsole);
+
+//char l = 'l';
+
+// Global variables
+
+// The main window class name.
+static TCHAR szWindowClass[] = _T("DesktopApp");
+
+// The string that appears in the application's title bar.
+static TCHAR szTitle[] = _T("Chris V's RF Software");
+
+// Stored instance handle for use in Win32 API calls such as FindResource
+HINSTANCE hInst;
+
+// Forward declarations of functions included in this code module:
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+
+void AddMenus(HWND hWnd);
+void AddButton(HWND hWnd);
+void MoveTheImage(POINT pt);
+
+HMENU hMenu;
+HWND hResistor, hCapacitor, hInductor, hWnd, hBattery, hT_Line,hwndStatic;
+HICON hLogoResistor, hLogoCapacitor, hLogoInductor, hLogoBattery, hLogoT_Line, hLogoHorse;
+HDC hdc;
+PAINTSTRUCT ps;
+POINT pt[10];
+
+const wchar_t* R_Name[10] = {L"R1",L"R2",L"R3",L"R4",L"R5",L"R6",L"R7",L"R8",L"R9",L"R10"};
+const wchar_t* C_Name[10] = { L"C1",L"C2",L"C3",L"C4",L"C5",L"C6",L"C7",L"C8",L"C9",L"C10" };
+
+
+HIMAGELIST hImageList;
+
+
+RECT g_rcImage;
+
+int iImage;
+int Resistor;
+int Capacitor;
+int Inductor;
+int T_Line;
+int Battery;
+
+float ZoomPt_x;
+float ZoomPt_y;
+
+/*HICON* g_pRImage;
+HICON* g_pCImage;
+HICON* g_pLImage;
+HICON* g_pTLINEImage;
+HICON* g_pBImage; // global pointer to the image being dragged*/
+
+
+POINT g_ptHotSpot;
+BOOL g_fDragging = FALSE;
+
+BOOL StartDragging(HWND hwnd, POINT ptCur, HIMAGELIST hImageList, int iImage);
+
+BOOL StopDragging(HWND hwnd, HDC hdc, HIMAGELIST hImageList, POINT ptCur, int iImage);
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    // Initialize common controls
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icex.dwICC = ICC_WIN95_CLASSES;
+    InitCommonControlsEx(&icex);
+
+    WNDCLASSEX wcex;
+
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(wcex.hInstance, IDI_HAND);
+    wcex.hCursor = LoadCursor(NULL,IDC_CROSS);
+    wcex.hbrBackground = (HBRUSH)(CreateSolidBrush(RGB(40, 110, 0))); //(40, 110, 0)
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = szWindowClass;
+    wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_HAND);
+
+
+    if (!RegisterClassEx(&wcex))
+    {
+        MessageBox(NULL, _T("Call to RegisterClassEx failed!"), _T("Chris V's RF software"), NULL);
+        return 1;
+    }
+
+    hInst = hInstance;
+
+    HWND hWnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1000, 550, NULL, NULL, hInstance, NULL);
+    
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    // Main message loop:
+    MSG msg;
+
+
+   while (GetMessage(&msg, NULL, 0, 0))
+    {
+
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+
+    }
+
+
+    return (int)msg.wParam;
+}
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    
+    TCHAR greeting[] = _T("Welcome to Chris V's RF software!");
+    PAINTSTRUCT ps;
+    HCURSOR precision_cursor = LoadCursor(NULL, IDC_CROSS);
+
+    switch (message)
+    {
+
+    case WM_TIMER:
+    {
+        std::string str = "R: " + std::to_string(r) + ", C: " + std::to_string(c) + ", L: " + std::to_string(l) + "TL: " + std::to_string(tl) + ", B: " + std::to_string(b);
+        SetWindowTextA(hwndStatic, str.c_str());
+        break;
+    }
+
+    case WM_KEYDOWN:
+    {
+        switch (wParam)
+        {
+        case 27:
+            MessageBeep(NULL);
+            PostQuitMessage(0);
+        }
+        break;
+
+        
+    }
+
+    case WM_COMMAND:
+
+
+        switch (wParam)
+        {  
+
+        case FILE_MENU_OPEN:
+            MessageBeep(NULL);
+            break;
+        case FILE_MENU_NEW:
+            MessageBeep(NULL);
+            break;
+        case FILE_MENU_NEW_FILE:
+            MessageBeep(NULL);
+            break;
+        case FILE_MENU_SAVE:
+            MessageBeep(NULL);
+            break;
+        case RESISTOR:
+            iImage = RESISTOR;
+
+            GetCursorPos(&pt[r]);
+
+            // Convert the cursor position to client coordinates
+            ScreenToClient(hWnd, &pt[r]);
+
+            //ImageList_Remove()
+            
+            Resistor = ImageList_AddIcon(hImageList, hLogoResistor);
+
+             //Start dragging the image
+            
+            if (StartDragging(hWnd, pt[r], hImageList,Resistor))
+            {
+                SetCapture(hWnd);
+                
+            }
+            break;
+
+        case CAPACITOR:
+
+            iImage = CAPACITOR;
+
+            GetCursorPos(&pt[c]);
+
+            // Convert the cursor position to client coordinates
+            ScreenToClient(hWnd, &pt[c]);
+
+            Capacitor = ImageList_AddIcon(hImageList, hLogoCapacitor);
+
+            // Start dragging the image
+            if (StartDragging(hWnd, pt[c], hImageList, Capacitor))
+            {
+
+                SetCapture(hWnd);
+            }
+            break;
+
+        case INDUCTOR:
+
+            iImage = INDUCTOR;
+
+            GetCursorPos(&pt[l]);
+
+            // Convert the cursor position to client coordinates
+            ScreenToClient(hWnd, &pt[l]);
+
+            Inductor = ImageList_AddIcon(hImageList, hLogoInductor);
+
+            // Start dragging the image
+            if (StartDragging(hWnd, pt[l], hImageList, Inductor))
+            {
+
+                SetCapture(hWnd);
+            }
+            break;
+
+        case BATTERY:
+
+            iImage = BATTERY;
+
+            GetCursorPos(&pt[b]);
+
+            // Convert the cursor position to client coordinates
+            ScreenToClient(hWnd, &pt[b]);
+
+            Battery = ImageList_AddIcon(hImageList, hLogoBattery);
+
+            // Start dragging the image
+            if (StartDragging(hWnd, pt[b], hImageList, Battery))
+            {
+
+                SetCapture(hWnd);
+            }
+            break;
+        case T_LINE:
+
+            iImage = T_LINE;
+
+            GetCursorPos(&pt[tl]);
+
+            // Convert the cursor position to client coordinates
+            ScreenToClient(hWnd, &pt[tl]);
+
+            T_Line = ImageList_AddIcon(hImageList, hLogoT_Line);
+
+            // Start dragging the image
+            if (StartDragging(hWnd, pt[tl], hImageList, T_Line))
+            {
+                SetCapture(hWnd);
+            }
+
+            break;
+        
+        }
+        
+
+    case WM_CREATE:
+    {
+        AddMenus(hWnd);
+
+        AddButton(hWnd);
+
+        hImageList = ImageList_Create(50, 25, ILC_COLOR, 1, 10);
+
+        hLogoResistor = (HICON)LoadImageW(NULL, L"r.ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+        hLogoInductor = (HICON)LoadImageW(NULL, L"l.ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+        hLogoCapacitor = (HICON)LoadImageW(NULL, L"c.ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+        hLogoBattery = (HICON)LoadImageW(NULL, L"battery.ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+        hLogoT_Line = (HICON)LoadImageW(NULL, L"t_line.ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+        hLogoHorse = (HICON)LoadImageW(NULL, L"horse(1).ico", IMAGE_ICON, NULL, NULL, LR_LOADFROMFILE);
+
+        hwndStatic = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE | SS_LEFT, 50, 50, 200, 20, hWnd, (HMENU)12, NULL, NULL);
+        SetTimer(hWnd, 12, 100, NULL);
+    }
+
+        break;
+
+    case WM_PAINT:
+    {
+
+        PAINTSTRUCT ps;
+        HDC hdcR = BeginPaint(hWnd, &ps);
+        hdc = GetDC(hWnd);
+        // Redraw all icons
+        for (int i = 0; i < r; i++)
+        {
+            DrawIcon(hdcR, pt[i].x, pt[i].y, hLogoResistor);
+        }
+
+        HDC hdcC = BeginPaint(hWnd, &ps);
+        hdc = GetDC(hWnd);
+        for (int j = 0; j < c; j++)
+        {
+            DrawIcon(hdcC, pt[j].x, pt[j].y, hLogoCapacitor);
+        }
+        EndPaint(hWnd, &ps);
+    }
+        break;
+
+    case WM_MOUSEMOVE:
+    {
+        // Check if we are dragging the image
+        if (g_fDragging)
+        {
+            // Get the current cursor position
+            GetCursorPos(&pt[r]);
+            GetCursorPos(&pt[c]);
+
+            // Move the image to the new location
+            MoveTheImage(pt[r]);
+             MoveTheImage(pt[c]);
+            
+        }
+        break;
+    }
+    case WM_LBUTTONUP:
+    {
+        hdc = GetDC(hWnd);
+        if (StopDragging(hWnd, hdc, hImageList, pt[r], iImage)|| StopDragging(hWnd, hdc, hImageList, pt[c], iImage))
+        {
+            switch (iImage)
+            {
+            case RESISTOR:
+            {
+               DrawIcon(hdc, pt[r].x, pt[r].y, hLogoResistor);
+               CreateWindowW(L"Static", R_Name[r], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[r].x, pt[r].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
+               r = r + 1;
+               // DrawIcon(hdc, pt.x, pt.y, hLogoResistor);
+               //ReleaseCapture();
+            }
+            break;
+            case CAPACITOR:
+            {
+                
+                DrawIcon(hdc, pt[c].x, pt[c].y, hLogoCapacitor);
+                CreateWindowW(L"Static", C_Name[c], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[c].x, pt[c].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
+                c = c + 1;
+                //ReleaseCapture();
+            }
+            break;
+            case INDUCTOR:
+            {
+                l = l+1;
+                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoInductor);
+                ReleaseCapture();
+            }
+            break;
+            case BATTERY:
+            {
+                b = b+1;
+                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoBattery);
+                ReleaseCapture();
+            }
+            break;
+            case T_LINE:
+            {
+                tl = tl+1;
+                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoT_Line);
+                ReleaseCapture();
+            }
+            break;
+
+            }
+           
+        }
+        ReleaseDC(hWnd, hdc);
+    }
+    break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+        break;
+    }
+
+    //return 0;
+}
+
+void AddMenus(HWND hWnd)
+{
+    hMenu = CreateMenu();
+    HMENU Menu1 = CreateMenu();
+    HMENU hFileMenu = CreateMenu();
+
+    AppendMenu(Menu1, MF_STRING, BATTERY, _T("New File"));
+    AppendMenu(Menu1, MF_STRING, FILE_MENU_NEW_PROJECT, _T("New Project"));
+
+    AppendMenu(hFileMenu, MF_POPUP, (UINT_PTR)Menu1, _T("New"));
+    AppendMenu(hFileMenu, MF_STRING, FILE_MENU_OPEN, _T("Open"));
+    AppendMenu(hFileMenu, MF_STRING, RESISTOR, _T("Save"));
+
+
+    AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hFileMenu, _T("File"));
+    AppendMenu(hMenu, MF_STRING, NULL, _T("Help"));
+    AppendMenu(hMenu, MF_STRING, NULL, _T("Tools"));
+
+    SetMenu(hWnd, hMenu);
+
+}
+
+void AddButton(HWND hWnd)
+{
+
+   // ImageList_BeginDrag(NULL, NULL, NULL, NULL);
+
+    CreateWindowW(L"BUTTON", L"Battery", (WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON), 100, 400, 100, 30, hWnd, (HMENU)BATTERY, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Resistor", (WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON), 300, 400, 100, 30, hWnd, (HMENU)RESISTOR, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Capacitor", (WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON), 200, 400, 100, 30, hWnd, (HMENU)CAPACITOR, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Inductor", (WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON), 400, 400, 100, 30, hWnd, (HMENU)INDUCTOR, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"T_Line", (WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON), 500, 400, 100, 30, hWnd, (HMENU)T_LINE, NULL, NULL);
+
+
+    // getch() == l;      
+
+}
+
+
+
+BOOL StartDragging(HWND hwnd, POINT pt, HIMAGELIST hImageList, int iImage)
+{
+    // Load the cross cursor
+    HCURSOR hCrossCursor = LoadCursor(NULL, IDC_CROSS);
+
+    // Set the cursor to cross
+    SetCursor(hCrossCursor);
+
+    // Capture the mouse input
+    SetCapture(hwnd);
+
+    
+
+    // Begin the drag operation
+    //if (!ImageList_BeginDrag(hImageList, iImage , ZoomPt_x, ZoomPt_y))
+    if (!ImageList_BeginDrag(hImageList, iImage, 100, 100))
+        return FALSE;
+
+    // Set the initial location of the image and make it visible
+    ClientToScreen(hwnd, &pt);
+    ImageList_DragEnter(hwnd, 0, 0);
+
+    g_fDragging = TRUE;
+
+    return TRUE;
+}
+
+
+// MoveTheImage - drags an image to the specified coordinates.
+void MoveTheImage(POINT pt)
+{
+    
+    // Drag the image to the new location
+    ImageList_DragMove(pt.x, pt.y);
+}
+
+BOOL StopDragging(HWND hwnd, HDC hdc, HIMAGELIST hImageList, POINT pt, int iImage)
+{
+    
+
+   ImageList_EndDrag();
+   ImageList_DragLeave(hwnd);
+
+   g_fDragging = FALSE;
+
+   ImageList_Draw(hImageList, iImage, hdc, 0, 0, ILD_ASYNC);
+
+   ReleaseCapture();
+   return TRUE;
+}
