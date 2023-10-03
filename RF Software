@@ -23,10 +23,8 @@
 #define T_LINE 10
 #define VK_ESCAPE 11
 #define COORDINATES 12
-#define w 10
-#define h 10
 
-int r=0;
+int r;
 int c;
 int l;
 int tl;
@@ -60,10 +58,12 @@ HWND hResistor, hCapacitor, hInductor, hWnd, hBattery, hT_Line,hwndStatic;
 HICON hLogoResistor, hLogoCapacitor, hLogoInductor, hLogoBattery, hLogoT_Line, hLogoHorse;
 HDC hdc;
 PAINTSTRUCT ps;
-POINT pt[10];
+POINT pt[10][10];
 
 const wchar_t* R_Name[10] = {L"R1",L"R2",L"R3",L"R4",L"R5",L"R6",L"R7",L"R8",L"R9",L"R10"};
 const wchar_t* C_Name[10] = { L"C1",L"C2",L"C3",L"C4",L"C5",L"C6",L"C7",L"C8",L"C9",L"C10" };
+const wchar_t* L_Name[10] = { L"L1",L"L2",L"L3",L"L4",L"L5",L"L6",L"L7",L"L8",L"L9",L"L10" };
+
 
 
 HIMAGELIST hImageList;
@@ -200,10 +200,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case RESISTOR:
             iImage = RESISTOR;
 
-            GetCursorPos(&pt[r]);
+            GetCursorPos(&pt[RESISTOR][r]);
 
             // Convert the cursor position to client coordinates
-            ScreenToClient(hWnd, &pt[r]);
+            ScreenToClient(hWnd, &pt[RESISTOR][r]);
 
             //ImageList_Remove()
             
@@ -211,7 +211,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
              //Start dragging the image
             
-            if (StartDragging(hWnd, pt[r], hImageList,Resistor))
+            if (StartDragging(hWnd, pt[RESISTOR][r], hImageList,Resistor))
             {
                 SetCapture(hWnd);
                 
@@ -222,15 +222,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             iImage = CAPACITOR;
 
-            GetCursorPos(&pt[c]);
+            GetCursorPos(&pt[CAPACITOR][c]);
 
             // Convert the cursor position to client coordinates
-            ScreenToClient(hWnd, &pt[c]);
+            ScreenToClient(hWnd, &pt[CAPACITOR][c]);
 
             Capacitor = ImageList_AddIcon(hImageList, hLogoCapacitor);
 
             // Start dragging the image
-            if (StartDragging(hWnd, pt[c], hImageList, Capacitor))
+            if (StartDragging(hWnd, pt[CAPACITOR][c], hImageList, Capacitor))
             {
 
                 SetCapture(hWnd);
@@ -241,15 +241,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             iImage = INDUCTOR;
 
-            GetCursorPos(&pt[l]);
+            GetCursorPos(&pt[INDUCTOR][l]);
 
             // Convert the cursor position to client coordinates
-            ScreenToClient(hWnd, &pt[l]);
+            ScreenToClient(hWnd, &pt[INDUCTOR][l]);
 
             Inductor = ImageList_AddIcon(hImageList, hLogoInductor);
 
             // Start dragging the image
-            if (StartDragging(hWnd, pt[l], hImageList, Inductor))
+            if (StartDragging(hWnd, pt[INDUCTOR][l], hImageList, Inductor))
             {
 
                 SetCapture(hWnd);
@@ -260,15 +260,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             iImage = BATTERY;
 
-            GetCursorPos(&pt[b]);
+            GetCursorPos(&pt[BATTERY][b]);
 
             // Convert the cursor position to client coordinates
-            ScreenToClient(hWnd, &pt[b]);
+            ScreenToClient(hWnd, &pt[BATTERY][b]);
 
             Battery = ImageList_AddIcon(hImageList, hLogoBattery);
 
             // Start dragging the image
-            if (StartDragging(hWnd, pt[b], hImageList, Battery))
+            if (StartDragging(hWnd, pt[BATTERY][b], hImageList, Battery))
             {
 
                 SetCapture(hWnd);
@@ -278,15 +278,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             iImage = T_LINE;
 
-            GetCursorPos(&pt[tl]);
+            GetCursorPos(&pt[T_LINE][tl]);
 
             // Convert the cursor position to client coordinates
-            ScreenToClient(hWnd, &pt[tl]);
+            ScreenToClient(hWnd, &pt[T_LINE][tl]);
 
             T_Line = ImageList_AddIcon(hImageList, hLogoT_Line);
 
             // Start dragging the image
-            if (StartDragging(hWnd, pt[tl], hImageList, T_Line))
+            if (StartDragging(hWnd, pt[T_LINE][tl], hImageList, T_Line))
             {
                 SetCapture(hWnd);
             }
@@ -321,20 +321,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
 
         PAINTSTRUCT ps;
-        HDC hdcR = BeginPaint(hWnd, &ps);
+        HDC hdc = BeginPaint(hWnd, &ps);
         hdc = GetDC(hWnd);
         // Redraw all icons
-        for (int i = 0; i < r; i++)
-        {
-            DrawIcon(hdcR, pt[i].x, pt[i].y, hLogoResistor);
-        }
 
-        HDC hdcC = BeginPaint(hWnd, &ps);
-        hdc = GetDC(hWnd);
-        for (int j = 0; j < c; j++)
-        {
-            DrawIcon(hdcC, pt[j].x, pt[j].y, hLogoCapacitor);
-        }
+
+            for (int i = 0; i < r; i++)
+            {
+                DrawIcon(hdc, pt[RESISTOR][i].x, pt[RESISTOR][i].y, hLogoResistor);
+            }
+            for (int j = 0; j < c; j++)
+            {
+                DrawIcon(hdc, pt[CAPACITOR][j].x, pt[CAPACITOR][j].y, hLogoCapacitor);
+            }
+            for (int k = 0; k < l; k++)
+            {
+                DrawIcon(hdc, pt[INDUCTOR][k].x, pt[INDUCTOR][k].y, hLogoInductor);
+            }
+        
         EndPaint(hWnd, &ps);
     }
         break;
@@ -345,12 +349,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (g_fDragging)
         {
             // Get the current cursor position
-            GetCursorPos(&pt[r]);
-            GetCursorPos(&pt[c]);
+            //if (iImage == RESISTOR)
+            //{
+                GetCursorPos(&pt[RESISTOR][r]);
+                // Move the image to the new location
+                MoveTheImage(pt[RESISTOR][r]);
+           // }
+           // else if (iImage == CAPACITOR)
+           // {
 
-            // Move the image to the new location
-            MoveTheImage(pt[r]);
-             MoveTheImage(pt[c]);
+                GetCursorPos(&pt[CAPACITOR][c]);
+                MoveTheImage(pt[CAPACITOR][c]);
+
+                GetCursorPos(&pt[INDUCTOR][l]);
+                MoveTheImage(pt[INDUCTOR][l]);
+           // }
             
         }
         break;
@@ -358,14 +371,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONUP:
     {
         hdc = GetDC(hWnd);
-        if (StopDragging(hWnd, hdc, hImageList, pt[r], iImage)|| StopDragging(hWnd, hdc, hImageList, pt[c], iImage))
+        if (StopDragging(hWnd, hdc, hImageList, pt[RESISTOR][r], iImage)|| StopDragging(hWnd, hdc, hImageList, pt[CAPACITOR][c], iImage)|| StopDragging(hWnd, hdc, hImageList, pt[INDUCTOR][l], iImage))
         {
             switch (iImage)
             {
             case RESISTOR:
             {
-               DrawIcon(hdc, pt[r].x, pt[r].y, hLogoResistor);
-               CreateWindowW(L"Static", R_Name[r], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[r].x, pt[r].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
+               DrawIcon(hdc, pt[RESISTOR][r].x, pt[RESISTOR][r].y, hLogoResistor);
+               CreateWindowW(L"Static", R_Name[r], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[RESISTOR][r].x, pt[RESISTOR][r].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
                r = r + 1;
                // DrawIcon(hdc, pt.x, pt.y, hLogoResistor);
                //ReleaseCapture();
@@ -374,30 +387,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case CAPACITOR:
             {
                 
-                DrawIcon(hdc, pt[c].x, pt[c].y, hLogoCapacitor);
-                CreateWindowW(L"Static", C_Name[c], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[c].x, pt[c].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
+                DrawIcon(hdc, pt[CAPACITOR][c].x, pt[CAPACITOR][c].y, hLogoCapacitor);
+                CreateWindowW(L"Static", C_Name[c], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[CAPACITOR][c].x, pt[CAPACITOR][c].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
                 c = c + 1;
                 //ReleaseCapture();
             }
             break;
             case INDUCTOR:
             {
-                l = l+1;
-                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoInductor);
-                ReleaseCapture();
+                DrawIcon(hdc, pt[INDUCTOR][l].x, pt[INDUCTOR][l].y, hLogoInductor);
+                CreateWindowW(L"Static", L_Name[l], WS_CHILD | WS_VISIBLE | SS_LEFT, pt[INDUCTOR][l].x, pt[INDUCTOR][l].y - 20, 20, 20, hWnd, NULL, NULL, NULL);
+                l = l + 1;
             }
             break;
             case BATTERY:
             {
                 b = b+1;
-                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoBattery);
+                DrawIcon(hdc, pt[BATTERY][b].x, pt[BATTERY][b].y, hLogoBattery);
                 ReleaseCapture();
             }
             break;
             case T_LINE:
             {
                 tl = tl+1;
-                DrawIcon(hdc, pt[r].x, pt[r].y, hLogoT_Line);
+                DrawIcon(hdc, pt[T_LINE][tl].x, pt[T_LINE][tl].y, hLogoT_Line);
                 ReleaseCapture();
             }
             break;
